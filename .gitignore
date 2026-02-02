@@ -1,2 +1,3 @@
 input.txt
 __pycache__
+logs/*

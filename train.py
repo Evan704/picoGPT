@@ -15,17 +15,17 @@ encode = lambda s: [stoi[c] for c in s]
 decode = lambda l: ''.join([itos[i] for i in l])
 # print(decode(encode('Hello World!')))
 
-device = 'cuda'
-
 import torch
+
+device = 'cuda'
 data = torch.tensor(encode(text), dtype=torch.long, device=device)
-# print(data[:200])
-print("Data loaded")
 
 # split
 n = int(0.9 * len(data))
 train_data = data[:n]
 test_data = data[n:]
+# print(data[:200])
+print("Data loaded")
 
 block_size = 8
 batch_size = 32
@@ -39,12 +39,12 @@ def get_batch(split):
 
 from model import PicoGPT
 n_embed = 32
-model = PicoGPT(vocab_size, n_embed)
+model = PicoGPT(vocab_size, n_embed, block_size)
 model = model.to(device)
 
 def sample():
     input = torch.zeros((1, 1), dtype=torch.long, device=device)
-    print(decode(model.generate(input, max_new_tokens=100)[0].tolist()))
+    print(decode(model.generate(input, max_new_tokens=300)[0].tolist()))
 
 lr = 1e-3
 optimizer = torch.optim.AdamW(model.parameters(), lr=lr)
@@ -52,7 +52,7 @@ optimizer = torch.optim.AdamW(model.parameters(), lr=lr)
 @torch.no_grad()
 def estimate_loss():
     model.eval()
-    esti_iter = 10
+    esti_iter = 50
     loss = 0
     out = {}
     for split in ['train', 'val']:
