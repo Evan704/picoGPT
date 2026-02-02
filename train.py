@@ -33,3 +33,8 @@ def get_batch(split):
     x = torch.stack([data[i:i+block_size] for i in ix])
     y = torch.stack([data[i+1:i+1+block_size] for i in ix])
     return x, y
+
+from model import PicoGPT
+n_embed = 32
+model = PicoGPT(vocab_size, n_embed)
+# print(decode(model.generate(torch.zeros((1, 1), dtype=torch.long), max_new_tokens=100)[0].tolist()))
