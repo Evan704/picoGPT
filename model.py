@@ -26,12 +26,20 @@ class Head(nn.Module):
         y = wei @ v # (B, T, head_dim)
         return y
 
+class MultiHeadAttn(nn.Module):
+    def __init__(self, num_head, n_embed, block_size):
+        super().__init__()
+        self.heads = nn.ModuleList([Head(n_embed, n_embed // num_head, block_size) for _ in range(num_head)])
+
+    def forward(self, x):
+        return torch.cat([h(x) for h in self.heads], dim=-1)
+
 class PicoGPT(nn.Module):
     def __init__(self, vocab_size, n_embed, block_size):
         super().__init__()
         self.token_embedding = nn.Embedding(vocab_size, n_embed)
         self.pos_embedding = nn.Embedding(block_size, n_embed)
-        self.attn = Head(n_embed, n_embed, block_size)
+        self.attn = MultiHeadAttn(4, n_embed, block_size)
         self.attn_proj = nn.Linear(n_embed, n_embed)
         self.proj = nn.Linear(n_embed, vocab_size)
         self.block_size = block_size
