@@ -18,3 +18,18 @@ decode = lambda l: ''.join([itos[i] for i in l])
 import torch
 data = torch.tensor(encode(text), dtype=torch.long)
 # print(data[:200])
+
+# split
+n = int(0.9 * len(data))
+train_data = data[:n]
+test_data = data[n:]
+
+block_size = 8
+batch_size = 4
+
+def get_batch(split):
+    data = train_data if split == 'train' else test_data
+    ix = torch.randint(len(data) - block_size, (batch_size,))
+    x = torch.stack([data[i:i+block_size] for i in ix])
+    y = torch.stack([data[i+1:i+1+block_size] for i in ix])
+    return x, y
