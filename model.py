@@ -30,17 +30,43 @@ class MultiHeadAttn(nn.Module):
     def __init__(self, num_head, n_embed, block_size):
         super().__init__()
         self.heads = nn.ModuleList([Head(n_embed, n_embed // num_head, block_size) for _ in range(num_head)])
+        self.out_proj = nn.Linear(n_embed, n_embed)
 
     def forward(self, x):
-        return torch.cat([h(x) for h in self.heads], dim=-1)
+        y = torch.cat([h(x) for h in self.heads], dim=-1)
+        y = self.out_proj(y)
+        return y
+    
+class FFN(nn.Module):
+    def __init__(self, n_embed):
+        super().__init__()
+        hidden_dim = 4*n_embed
+        self.net = nn.Sequential(
+            nn.Linear(n_embed, hidden_dim),
+            nn.ReLU(),
+            nn.Linear(hidden_dim, n_embed)
+        )
+
+    def forward(self, x):
+        return self.net(x)
+
+class TransformerBlock(nn.Module):
+    def __init__(self, num_head, n_embed, block_size):
+        super().__init__()
+        self.attn = MultiHeadAttn(num_head, n_embed, block_size)
+        self.ffn = FFN(n_embed)
+
+    def forward(self, x):
+        y = self.attn(x) + x
+        y = self.ffn(y) + y
+        return y
 
 class PicoGPT(nn.Module):
     def __init__(self, vocab_size, n_embed, block_size):
         super().__init__()
         self.token_embedding = nn.Embedding(vocab_size, n_embed)
         self.pos_embedding = nn.Embedding(block_size, n_embed)
-        self.attn = MultiHeadAttn(4, n_embed, block_size)
-        self.attn_proj = nn.Linear(n_embed, n_embed)
+        self.transformer = TransformerBlock(4, n_embed, block_size)
         self.proj = nn.Linear(n_embed, vocab_size)
         self.block_size = block_size
     
@@ -49,10 +75,8 @@ class PicoGPT(nn.Module):
         _, T = x.shape
         tok_emb = self.token_embedding(x) # (B, T, n_embed)
         pos_emb = self.pos_embedding(torch.arange(T, device=x.device))
-        res = tok_emb + pos_emb
-        y = self.attn(res) # (B, T, head_dim)
-        y = self.attn_proj(y) # (B, T, n_embed)
-        y = F.relu(y + res)
+        y = tok_emb + pos_emb
+        y = self.transformer(y) # (B, T, n_embed)
         y = self.proj(y) # (B, T, vocab_size)
 
         if target is None:

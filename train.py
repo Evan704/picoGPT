@@ -16,6 +16,7 @@ decode = lambda l: ''.join([itos[i] for i in l])
 # print(decode(encode('Hello World!')))
 
 import torch
+torch.manual_seed(42)
 
 device = 'cuda'
 data = torch.tensor(encode(text), dtype=torch.long, device=device)
@@ -46,7 +47,7 @@ def sample():
     input = torch.zeros((1, 1), dtype=torch.long, device=device)
     print(decode(model.generate(input, max_new_tokens=300)[0].tolist()))
 
-lr = 1e-3
+lr = 5e-4
 optimizer = torch.optim.AdamW(model.parameters(), lr=lr)
 
 @torch.no_grad()
@@ -66,7 +67,7 @@ def estimate_loss():
     model.train()
 
 print("Start to train...")
-train_iter = 20000
+train_iter = 80000
 eval_interval = 2000
 for iter in range(train_iter):
     xb, yb = get_batch('train')
