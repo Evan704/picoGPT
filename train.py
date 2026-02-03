@@ -47,7 +47,7 @@ def sample():
     input = torch.zeros((1, 1), dtype=torch.long, device=device)
     print(decode(model.generate(input, max_new_tokens=300)[0].tolist()))
 
-lr = 5e-4
+lr = 3e-4
 optimizer = torch.optim.AdamW(model.parameters(), lr=lr)
 
 @torch.no_grad()
@@ -67,8 +67,8 @@ def estimate_loss():
     model.train()
 
 print("Start to train...")
-train_iter = 80000
-eval_interval = 2000
+train_iter = 100000
+eval_interval = 10000
 for iter in range(train_iter):
     xb, yb = get_batch('train')
     logits, loss = model(xb, yb)

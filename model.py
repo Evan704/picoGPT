@@ -55,9 +55,13 @@ class TransformerBlock(nn.Module):
         super().__init__()
         self.attn = MultiHeadAttn(num_head, n_embed, block_size)
         self.ffn = FFN(n_embed)
+        self.norm1 = nn.LayerNorm(n_embed)
+        self.norm2 = nn.LayerNorm(n_embed)
 
     def forward(self, x):
+        x = self.norm1(x)
         y = self.attn(x) + x
+        y = self.norm2(y)
         y = self.ffn(y) + y
         return y
 
@@ -66,7 +70,12 @@ class PicoGPT(nn.Module):
         super().__init__()
         self.token_embedding = nn.Embedding(vocab_size, n_embed)
         self.pos_embedding = nn.Embedding(block_size, n_embed)
-        self.transformer = TransformerBlock(4, n_embed, block_size)
+        num_head = 4
+        num_block = 4
+        self.transformer = nn.Sequential(
+            *[TransformerBlock(num_head, n_embed, block_size) for _ in range(num_block)],
+            nn.LayerNorm(n_embed)
+        )
         self.proj = nn.Linear(n_embed, vocab_size)
         self.block_size = block_size
     
