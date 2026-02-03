@@ -28,8 +28,8 @@ test_data = data[n:]
 # print(data[:200])
 print("Data loaded")
 
-block_size = 8
-batch_size = 32
+block_size = 256
+batch_size = 64
 
 def get_batch(split):
     data = train_data if split == 'train' else test_data
@@ -39,7 +39,7 @@ def get_batch(split):
     return x, y
 
 from model import PicoGPT
-n_embed = 32
+n_embed = 384
 model = PicoGPT(vocab_size, n_embed, block_size)
 model = model.to(device)
 
@@ -48,7 +48,7 @@ def sample():
     print(decode(model.generate(input, max_new_tokens=300)[0].tolist()))
 
 lr = 3e-4
-optimizer = torch.optim.AdamW(model.parameters(), lr=lr)
+optimizer = torch.optim.AdamW(model.parameters(), lr=lr, weight_decay=0.1)
 
 @torch.no_grad()
 def estimate_loss():
@@ -63,12 +63,15 @@ def estimate_loss():
             _, loss = model(xb, yb)
             losses[k] = loss
         out[split] = losses.mean()
-    print(f"Loss in train set: {out['train']}, val set: {out['val']}")
     model.train()
+    return out
 
 print("Start to train...")
-train_iter = 100000
-eval_interval = 10000
+train_iter = 50000
+eval_interval = 1000
+trigger_times = 0
+max_trigger_times = 5
+best_val_loss = float('inf')
 for iter in range(train_iter):
     xb, yb = get_batch('train')
     logits, loss = model(xb, yb)
@@ -78,6 +81,23 @@ for iter in range(train_iter):
 
     if iter % eval_interval == 0:
         print(f"Iter {iter}:")
-        estimate_loss()
+        losses = estimate_loss()
+        cur_val_loss = losses['val']
+        print(f"train loss: {losses['train']}, val loss: {cur_val_loss}")
+
+        if cur_val_loss < best_val_loss:
+            best_val_loss = cur_val_loss
+            trigger_times = 0
+            torch.save(model.state_dict(), 'ckpt/best_model.pth')
+            print("Best model saved!")
+        else:
+            trigger_times += 1
+            print(f"No improvement. Early stopping counter: {trigger_times}")
+            if trigger_times >= max_trigger_times:
+                print(f"Early stopping at {iter}")
+                break
 
 sample()
+
+trainable_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
+print(f"Trainable parameters: {trainable_params}")
