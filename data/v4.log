@@ -1,0 +1,40 @@
+Data loaded
+Start to train...
+Iter 0:
+train loss: 3.987602949142456, val loss: 4.027195930480957
+Best model saved!
+Iter 1000:
+train loss: 1.5142121315002441, val loss: 1.707746148109436
+Best model saved!
+Iter 2000:
+train loss: 1.2764283418655396, val loss: 1.5163389444351196
+Best model saved!
+Iter 3000:
+train loss: 1.162351131439209, val loss: 1.470208764076233
+Best model saved!
+Iter 4000:
+train loss: 1.0790393352508545, val loss: 1.472249150276184
+No improvement. Early stopping counter: 1
+Iter 5000:
+train loss: 0.9904430508613586, val loss: 1.4795347452163696
+No improvement. Early stopping counter: 2
+Iter 6000:
+train loss: 0.9032699465751648, val loss: 1.5264209508895874
+No improvement. Early stopping counter: 3
+Iter 7000:
+train loss: 0.8287800550460815, val loss: 1.5565990209579468
+No improvement. Early stopping counter: 4
+Iter 8000:
+train loss: 0.752350389957428, val loss: 1.6219748258590698
+No improvement. Early stopping counter: 5
+Early stopping at 8000
+
+Could and brave for thee! March our withdraw with thee?
+Captain Verona? O, give us leave and keep
+Unto the chyse; squake, as 'tis the face of triumph,
+At liberty, such a name of blessed
+With dial clouds are on those ways.
+Richard! Away with him! and plagues
+More than thou wast from thy fault;
+Tell p
+Trainable parameters: 10795841

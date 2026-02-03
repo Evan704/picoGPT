@@ -2,6 +2,8 @@ import torch
 import torch.nn as nn
 from torch.nn import functional as F
 
+dropout = 0.2
+
 class Head(nn.Module):
     def __init__(self, n_embed, head_dim, block_size):
         super().__init__()
@@ -13,6 +15,8 @@ class Head(nn.Module):
         tril = torch.tril(torch.ones(block_size, block_size))
         self.register_buffer('tril', tril)
 
+        self.dropout = nn.Dropout(dropout)
+
     def forward(self, x):
         _, T, _ = x.shape
         # (B, T, n_embed)
@@ -23,6 +27,7 @@ class Head(nn.Module):
         wei = q @ k.transpose(-2, -1) * self.head_dim**-0.5 # (B, T, T)
         wei = wei.masked_fill(self.tril[:T, :T] == 0, float('-inf'))
         wei = F.softmax(wei, dim=-1)
+        wei = self.dropout(wei)
         y = wei @ v # (B, T, head_dim)
         return y
 
@@ -31,9 +36,11 @@ class MultiHeadAttn(nn.Module):
         super().__init__()
         self.heads = nn.ModuleList([Head(n_embed, n_embed // num_head, block_size) for _ in range(num_head)])
         self.out_proj = nn.Linear(n_embed, n_embed)
+        self.dropout = nn.Dropout(dropout)
 
     def forward(self, x):
         y = torch.cat([h(x) for h in self.heads], dim=-1)
+        y = self.dropout(y)
         y = self.out_proj(y)
         return y
     
@@ -44,7 +51,8 @@ class FFN(nn.Module):
         self.net = nn.Sequential(
             nn.Linear(n_embed, hidden_dim),
             nn.ReLU(),
-            nn.Linear(hidden_dim, n_embed)
+            nn.Linear(hidden_dim, n_embed),
+            nn.Dropout(dropout)
         )
 
     def forward(self, x):
@@ -70,8 +78,8 @@ class PicoGPT(nn.Module):
         super().__init__()
         self.token_embedding = nn.Embedding(vocab_size, n_embed)
         self.pos_embedding = nn.Embedding(block_size, n_embed)
-        num_head = 4
-        num_block = 4
+        num_head = 6
+        num_block = 6
         self.transformer = nn.Sequential(
             *[TransformerBlock(num_head, n_embed, block_size) for _ in range(num_block)],
             nn.LayerNorm(n_embed)
