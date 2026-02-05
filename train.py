@@ -4,15 +4,14 @@ with open('input.txt', 'r', encoding='utf-8') as f:
 # print(f"Length: {len(text)}")
 # print(text[:200])
 
-chars = sorted(list(set(text)))
-vocab_size = len(chars)
-# print(''.join(chars))
-# print(vocab_size)
+import tiktoken
 
-stoi = {ch:i for i, ch in enumerate(chars)}
-itos = {i:ch for i, ch in enumerate(chars)}
-encode = lambda s: [stoi[c] for c in s]
-decode = lambda l: ''.join([itos[i] for i in l])
+enc = tiktoken.get_encoding("gpt2")
+
+encode = lambda s: enc.encode_ordinary(s)
+decode = lambda l: enc.decode(l)
+
+vocab_size = 50304
 # print(decode(encode('Hello World!')))
 
 import torch
@@ -44,7 +43,7 @@ model = PicoGPT(vocab_size, n_embed, block_size)
 model = model.to(device)
 
 def sample():
-    input = torch.zeros((1, 1), dtype=torch.long, device=device)
+    input = torch.tensor([[50256]], dtype=torch.long, device=device)
     print(decode(model.generate(input, max_new_tokens=300)[0].tolist()))
 
 lr = 3e-4
