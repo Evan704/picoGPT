@@ -2,6 +2,39 @@ import torch
 import torch.nn as nn
 from torch.nn import functional as F
 
+class RoPE(nn.Module):
+    def __init__(self, n_embed, base=10000):
+        super().__init__()
+        self.base = base
+        self.n_embed = n_embed
+        self.register_buffer('cos_cache', None) # (T, C)
+        self.register_buffer('sin_cache', None)
+
+    def _build_cache(self, x):
+        seq_len = x.size(-2)
+        if self.cos_cache is not None and seq_len <= self.cos_cache.size(-2):
+            return
+        theta = 1. / (self.base ** (torch.arange(0, self.n_embed, 2).float() / self.n_embed))
+        seq_idx = torch.arange(seq_len, device=x.device)
+        idx_theta = torch.outer(seq_idx, theta) # (T, C / 2)
+        idx_theta = torch.cat([idx_theta, idx_theta], dim=-1)
+        self.cos_cache = idx_theta.cos()
+        self.sin_cache = idx_theta.sin()
+    
+    def forward(self, x):
+        # x: (B, T, C)
+        seq_len = x.size(-2)
+        self._build_cache(x)
+        cos = self.cos_cache[:seq_len, :]
+        sin = self.sin_cache[:seq_len, :]
+
+        # [x_front, x_back] -> [-x_back, x_front]
+        x_front, x_back = torch.chunk(x, 2, dim=-1)
+        x_shift = torch.cat([-x_back, x_front], dim=-1)
+
+        x_rope = x * cos + x_shift * sin
+        return x_rope
+
 dropout = 0.2
 
 class Head(nn.Module):
@@ -63,8 +96,8 @@ class TransformerBlock(nn.Module):
         super().__init__()
         self.attn = MultiHeadAttn(num_head, n_embed, block_size)
         self.ffn = FFN(n_embed)
-        self.norm1 = nn.LayerNorm(n_embed)
-        self.norm2 = nn.LayerNorm(n_embed)
+        self.norm1 = nn.RMSNorm(n_embed, eps=1e-6)
+        self.norm2 = nn.RMSNorm(n_embed, eps=1e-6)
 
     def forward(self, x):
         x = self.norm1(x)
