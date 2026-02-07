@@ -117,7 +117,8 @@ class PicoGPT(nn.Module):
             *[TransformerBlock(num_head, n_embed, block_size) for _ in range(num_block)],
             nn.LayerNorm(n_embed)
         )
-        self.proj = nn.Linear(n_embed, vocab_size)
+        self.proj = nn.Linear(n_embed, vocab_size, bias=False)
+        self.proj.weight = self.token_embedding.weight
         self.block_size = block_size
     
     def forward(self, x, target=None):
