@@ -10,8 +10,8 @@ dtype = np.uint16
 os.environ["HF_ENDPOINT"] = "https://hf-mirror.com"
 print("Loading dataset...")
 split_dataset = load_dataset("text", data_files={
-    'train': "datasets/TinyStories-train.txt",
-    'val': "datasets/TinyStories-valid.txt"
+    'train': "datasets/TinyStories/TinyStories-train.txt",
+    'val': "datasets/TinyStories/TinyStories-valid.txt"
 })
 print("Dataset loaded.")
 
@@ -30,7 +30,7 @@ tokenized = split_dataset.map(
 
 for split, set in tokenized.items():
     arr_len = np.sum(set['len'], dtype=np.uint64)
-    filename = os.path.join('datasets/', f'{split}.bin')
+    filename = os.path.join('datasets/TinyStories/', f'{split}.bin')
     print(f"Writing {filename}")
     
     arr = np.memmap(filename, dtype=dtype, mode='w+', shape=(arr_len,))

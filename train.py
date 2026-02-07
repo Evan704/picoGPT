@@ -1,5 +1,10 @@
-with open('input.txt', 'r', encoding='utf-8') as f:
-    text = f.read()
+import numpy as np
+import os
+
+data_dir = 'datasets/TinyStories'
+train_data = np.memmap(os.path.join(data_dir, 'train.bin'), dtype=np.uint16, mode='r')
+val_data = np.memmap(os.path.join(data_dir, 'val.bin'), dtype=np.uint16, mode='r')
+print("Data loaded")
 
 # print(f"Length: {len(text)}")
 # print(text[:200])
@@ -18,23 +23,19 @@ import torch
 torch.manual_seed(42)
 
 device = 'cuda'
-data = torch.tensor(encode(text), dtype=torch.long, device=device)
-
-# split
-n = int(0.9 * len(data))
-train_data = data[:n]
-test_data = data[n:]
-# print(data[:200])
-print("Data loaded")
 
 block_size = 256
 batch_size = 64
 
 def get_batch(split):
-    data = train_data if split == 'train' else test_data
+    data = train_data if split == 'train' else val_data
     ix = torch.randint(len(data) - block_size, (batch_size,), device=device)
-    x = torch.stack([data[i:i+block_size] for i in ix])
-    y = torch.stack([data[i+1:i+1+block_size] for i in ix])
+    x = torch.stack([torch.from_numpy((data[i:i+block_size]).astype(np.int64)) for i in ix])
+    y = torch.stack([torch.from_numpy((data[i+1:i+1+block_size]).astype(np.int64)) for i in ix])
+    if device == 'cuda':
+        x, y = x.pin_memory().to(device, non_blocking=True), y.pin_memory().to(device, non_blocking=True)
+    else:
+        x, y = x.to(device), y.to(device)
     return x, y
 
 from model import PicoGPT
