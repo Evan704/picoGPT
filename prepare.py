@@ -7,7 +7,6 @@ from tqdm import tqdm
 num_proc = 8
 dtype = np.uint16
 
-os.environ["HF_ENDPOINT"] = "https://hf-mirror.com"
 print("Loading dataset...")
 split_dataset = load_dataset("text", data_files={
     'train': "datasets/TinyStories/TinyStories-train.txt",
@@ -18,7 +17,6 @@ print("Dataset loaded.")
 enc = tiktoken.get_encoding("gpt2")
 def process(example):
     ids = enc.encode_ordinary(example['text'])
-    ids.append(enc.eot_token) # 添加结束符 <|endoftext|>
     return {'ids': ids, 'len': len(ids)}
 
 tokenized = split_dataset.map(
