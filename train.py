@@ -1,5 +1,6 @@
 import numpy as np
 import os
+from tqdm import trange, tqdm
 
 data_dir = 'datasets/TinyStories'
 train_data = np.memmap(os.path.join(data_dir, 'train.bin'), dtype=np.uint16, mode='r')
@@ -67,34 +68,37 @@ def estimate_loss():
     return out
 
 print("Start to train...")
-train_iter = 50000
+train_iter = 20000
 eval_interval = 1000
 trigger_times = 0
 max_trigger_times = 5
 best_val_loss = float('inf')
-for iter in range(train_iter):
+
+pbar = trange(train_iter, desc="Training", ncols=100)
+for iter in pbar:
     xb, yb = get_batch('train')
     logits, loss = model(xb, yb)
     optimizer.zero_grad(set_to_none=True)
+    pbar.set_postfix(loss=loss)
     loss.backward()
     optimizer.step()
 
     if iter % eval_interval == 0:
-        print(f"Iter {iter}:")
+        tqdm.write(f"Iter {iter}:")
         losses = estimate_loss()
         cur_val_loss = losses['val']
-        print(f"train loss: {losses['train']}, val loss: {cur_val_loss}")
+        tqdm.write(f"train loss: {losses['train']}, val loss: {cur_val_loss}")
 
         if cur_val_loss < best_val_loss:
             best_val_loss = cur_val_loss
             trigger_times = 0
             torch.save(model.state_dict(), 'ckpt/best_model.pth')
-            print("Best model saved!")
+            tqdm.write("Best model saved!")
         else:
             trigger_times += 1
-            print(f"No improvement. Early stopping counter: {trigger_times}")
+            tqdm.write(f"No improvement. Early stopping counter: {trigger_times}")
             if trigger_times >= max_trigger_times:
-                print(f"Early stopping at {iter}")
+                tqdm.write(f"Early stopping at {iter}")
                 break
 
 sample()
