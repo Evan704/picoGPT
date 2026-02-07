@@ -1,4 +1,5 @@
-input.txt
+datasets
 __pycache__
 logs/*
 ckpt
+*.sh
