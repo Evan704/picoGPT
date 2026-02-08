@@ -46,6 +46,9 @@ n_embed = 384
 model = PicoGPT(vocab_size, n_embed, block_size)
 model = model.to(device)
 
+trainable_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
+print(f"Trainable parameters: {trainable_params}")
+
 def sample():
     input = torch.tensor([[50256]], dtype=torch.long, device=device)
     print(decode(model.generate(input, max_new_tokens=300)[0].tolist()))
@@ -81,29 +84,26 @@ for iter in pbar:
     xb, yb = get_batch('train')
     logits, loss = model(xb, yb)
     optimizer.zero_grad(set_to_none=True)
-    pbar.set_postfix(loss=loss)
+    pbar.set_postfix(loss=loss.item())
     loss.backward()
     optimizer.step()
 
     if iter % eval_interval == 0:
-        tqdm.write(f"Iter {iter}:")
+        pbar.write(f"Iter {iter}:")
         losses = estimate_loss()
         cur_val_loss = losses['val']
-        tqdm.write(f"train loss: {losses['train']}, val loss: {cur_val_loss}")
+        pbar.write(f"train loss: {losses['train']}, val loss: {cur_val_loss}")
 
         if cur_val_loss < best_val_loss:
             best_val_loss = cur_val_loss
             trigger_times = 0
             torch.save(model.state_dict(), f'ckpt/best_model_{job_id}.pth')
-            tqdm.write("Best model saved!")
+            pbar.write("Best model saved!")
         else:
             trigger_times += 1
-            tqdm.write(f"No improvement. Early stopping counter: {trigger_times}")
+            pbar.write(f"No improvement. Early stopping counter: {trigger_times}")
             if trigger_times >= max_trigger_times:
-                tqdm.write(f"Early stopping at {iter}")
+                pbar.write(f"Early stopping at {iter}")
                 break
 
 sample()
-
-trainable_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
-print(f"Trainable parameters: {trainable_params}")
