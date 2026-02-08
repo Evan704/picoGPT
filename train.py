@@ -2,6 +2,8 @@ import numpy as np
 import os
 from tqdm import trange, tqdm
 
+job_id = os.environ.get('SLURM_JOB_ID')
+
 data_dir = 'datasets/TinyStories'
 train_data = np.memmap(os.path.join(data_dir, 'train.bin'), dtype=np.uint16, mode='r')
 val_data = np.memmap(os.path.join(data_dir, 'val.bin'), dtype=np.uint16, mode='r')
@@ -92,7 +94,7 @@ for iter in pbar:
         if cur_val_loss < best_val_loss:
             best_val_loss = cur_val_loss
             trigger_times = 0
-            torch.save(model.state_dict(), 'ckpt/best_model.pth')
+            torch.save(model.state_dict(), f'ckpt/best_model_{job_id}.pth')
             tqdm.write("Best model saved!")
         else:
             trigger_times += 1
