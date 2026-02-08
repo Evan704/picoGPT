@@ -7,14 +7,14 @@ class RoPE(nn.Module):
         super().__init__()
         self.base = base
         self.n_embed = n_embed
-        self.register_buffer('cos_cache', None) # (T, C)
-        self.register_buffer('sin_cache', None)
+        self.register_buffer('cos_cache', None, persistent=False) # (T, C)
+        self.register_buffer('sin_cache', None, persistent=False)
 
     def _build_cache(self, x):
         seq_len = x.size(-2)
         if self.cos_cache is not None and seq_len <= self.cos_cache.size(-2):
             return
-        theta = 1. / (self.base ** (torch.arange(0, self.n_embed, 2).float() / self.n_embed))
+        theta = 1. / (self.base ** (torch.arange(0, self.n_embed, 2, device=x.device).float() / self.n_embed))
         seq_idx = torch.arange(seq_len, device=x.device)
         idx_theta = torch.outer(seq_idx, theta) # (T, C / 2)
         idx_theta = torch.cat([idx_theta, idx_theta], dim=-1)
@@ -43,6 +43,7 @@ class Head(nn.Module):
         self.k_proj = nn.Linear(n_embed, head_dim)
         self.q_proj = nn.Linear(n_embed, head_dim)
         self.v_proj = nn.Linear(n_embed, head_dim)
+        self.RoPE = RoPE(head_dim)
         self.head_dim = head_dim
 
         tril = torch.tril(torch.ones(block_size, block_size))
@@ -53,8 +54,8 @@ class Head(nn.Module):
     def forward(self, x):
         _, T, _ = x.shape
         # (B, T, n_embed)
-        k = self.k_proj(x) # (B, T, head_dim)
-        q = self.q_proj(x)
+        k = self.RoPE(self.k_proj(x)) # (B, T, head_dim)
+        q = self.RoPE(self.q_proj(x))
         v = self.v_proj(x)
 
         wei = q @ k.transpose(-2, -1) * self.head_dim**-0.5 # (B, T, T)
@@ -110,7 +111,6 @@ class PicoGPT(nn.Module):
     def __init__(self, vocab_size, n_embed, block_size):
         super().__init__()
         self.token_embedding = nn.Embedding(vocab_size, n_embed)
-        self.pos_embedding = nn.Embedding(block_size, n_embed)
         num_head = 6
         num_block = 6
         self.transformer = nn.Sequential(
@@ -124,9 +124,7 @@ class PicoGPT(nn.Module):
     def forward(self, x, target=None):
         # x, target: (B, T)
         _, T = x.shape
-        tok_emb = self.token_embedding(x) # (B, T, n_embed)
-        pos_emb = self.pos_embedding(torch.arange(T, device=x.device))
-        y = tok_emb + pos_emb
+        y = self.token_embedding(x) # (B, T, n_embed)
         y = self.transformer(y) # (B, T, n_embed)
         y = self.proj(y) # (B, T, vocab_size)
 
