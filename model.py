@@ -135,12 +135,14 @@ class PicoGPT(nn.Module):
             loss = F.cross_entropy(y.view(B*T, C), target.view(-1))
         return y, loss
     
-    def generate(self, x, max_new_tokens):
+    def generate(self, x, max_new_tokens, temperature=0.7, top_k=50):
         # x: (B, T)
         for _ in range(max_new_tokens):
             input = x[:, -self.block_size:]
             logits, _ = self(input) # (B, T, vocab_size)
-            logits = logits[:, -1, :] # (B, vocab_size)
+            logits = logits[:, -1, :] / temperature # (B, vocab_size)
+            v, _ = torch.topk(logits, min(top_k, logits.size(-1)))
+            logits[logits < v[:, [-1]]] = float('-inf')
             probs = F.softmax(logits, dim=-1)
             next_token = torch.multinomial(probs, num_samples=1) # (B, 1)
             x = torch.cat([x, next_token], dim=-1)
