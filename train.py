@@ -1,6 +1,7 @@
 import numpy as np
 import os
 from tqdm import trange, tqdm
+import wandb
 
 job_id = os.environ.get('SLURM_JOB_ID')
 
@@ -79,6 +80,11 @@ trigger_times = 0
 max_trigger_times = 5
 best_val_loss = float('inf')
 
+wandb.init(
+    project="picoGPT",
+    name=job_id
+)
+
 pbar = trange(train_iter, desc="Training", ncols=100)
 for iter in pbar:
     xb, yb = get_batch('train')
@@ -87,6 +93,10 @@ for iter in pbar:
     pbar.set_postfix(loss=loss.item())
     loss.backward()
     optimizer.step()
+
+    wandb.log({
+        "loss": loss,
+    })
 
     if iter % eval_interval == 0:
         pbar.write(f"Iter {iter}:")
@@ -107,3 +117,5 @@ for iter in pbar:
                 break
 
 sample()
+
+wandb.finish()
