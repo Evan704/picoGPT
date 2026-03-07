@@ -44,7 +44,9 @@ def get_batch(split):
 
 from model import PicoGPT
 n_embed = 384
-model = PicoGPT(vocab_size, n_embed, block_size)
+num_head = 6
+num_block = 6
+model = PicoGPT(vocab_size, n_embed, block_size, num_head, num_block)
 model = model.to(device)
 
 trainable_params = sum(p.numel() for p in model.parameters() if p.requires_grad)

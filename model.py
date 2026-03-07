@@ -40,9 +40,9 @@ dropout = 0.2
 class Head(nn.Module):
     def __init__(self, n_embed, head_dim, block_size):
         super().__init__()
-        self.k_proj = nn.Linear(n_embed, head_dim)
-        self.q_proj = nn.Linear(n_embed, head_dim)
-        self.v_proj = nn.Linear(n_embed, head_dim)
+        self.k_proj = nn.Linear(n_embed, head_dim, bias=False)
+        self.q_proj = nn.Linear(n_embed, head_dim, bias=False)
+        self.v_proj = nn.Linear(n_embed, head_dim, bias=False)
         self.RoPE = RoPE(head_dim)
         self.head_dim = head_dim
 
@@ -81,16 +81,13 @@ class MultiHeadAttn(nn.Module):
 class FFN(nn.Module):
     def __init__(self, n_embed):
         super().__init__()
-        hidden_dim = 4*n_embed
-        self.net = nn.Sequential(
-            nn.Linear(n_embed, hidden_dim),
-            nn.ReLU(),
-            nn.Linear(hidden_dim, n_embed),
-            nn.Dropout(dropout)
-        )
+        hidden_dim = 4 * n_embed
+        self.up_proj = nn.Linear(n_embed, hidden_dim, bias=False)
+        self.down_proj = nn.Linear(hidden_dim, n_embed, bias=False)
+        self.gate_proj = nn.Linear(n_embed, hidden_dim, bias=False)
 
     def forward(self, x):
-        return self.net(x)
+        return self.down_proj(F.silu(self.gate_proj(x)) * self.up_proj(x))
 
 class TransformerBlock(nn.Module):
     def __init__(self, num_head, n_embed, block_size):
@@ -108,14 +105,12 @@ class TransformerBlock(nn.Module):
         return y
 
 class PicoGPT(nn.Module):
-    def __init__(self, vocab_size, n_embed, block_size):
+    def __init__(self, vocab_size, n_embed, block_size, num_head, num_block):
         super().__init__()
         self.token_embedding = nn.Embedding(vocab_size, n_embed)
-        num_head = 6
-        num_block = 6
         self.transformer = nn.Sequential(
             *[TransformerBlock(num_head, n_embed, block_size) for _ in range(num_block)],
-            nn.LayerNorm(n_embed)
+            nn.RMSNorm(n_embed, eps=1e-6)
         )
         self.proj = nn.Linear(n_embed, vocab_size, bias=False)
         self.proj.weight = self.token_embedding.weight

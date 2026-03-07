@@ -15,7 +15,9 @@ decode = lambda l: enc.decode(l)
 vocab_size = 50304
 n_embed = 384
 block_size = 256
-model = PicoGPT(vocab_size, n_embed, block_size)
+num_head = 6
+num_block = 6
+model = PicoGPT(vocab_size, n_embed, block_size, num_head, num_block)
 
 state_dict = torch.load(f'ckpt/{args.ckpt}', map_location='cuda')
 print("State dict loaded.")
